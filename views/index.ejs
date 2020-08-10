@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <title>u logged in homy</title>
+
+    <link href="/css/reset.css" rel="stylesheet" type="text/css">
+    <link href="/css/style.css" rel="stylesheet" type="text/css">
+
+    <script defer src="/socket.io/socket.io.js"></script>
+    <script defer src="index.js"></script>
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li>
+          <a href="/">Home</a>
+        </li>
+        <li id="login">
+          <form action="/logout?_method=DELETE" method="POST">
+            <button type="submit" id="logout-button">Log Out</button>
+          </form>
+        </li>
+      </ul>
+    </nav>
+
+    <h1>Hi <%= username %></h1>
+    
+    <h1>Games</h1>
+    <div id="game-container">
+      <% Object.keys(games).forEach(game => { %>
+          <div id="<%= game %>" class="game">
+            <a href="/<%= game %>"><%= game %></a>
+          </div>
+      <% }) %>
+    </div>
+    
+    <form action="/game" method="POST">
+      <input name="game" type="text" required>
+      <button type="submit">Create New Game</button>
+    </form>
+
+  </body>
+</html>

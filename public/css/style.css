@@ -1,0 +1,33 @@
+a {
+    text-decoration: none;
+}
+
+nav {
+    width: 100vw;
+    background-color: lightblue;
+    padding: 2vw 0;
+}
+
+ul {
+    display: flex;
+}
+
+li {
+    margin: 0 2vw;
+    font-size: 3vh;
+    color: purple;
+}
+
+#login {
+    margin-left: auto;
+}
+
+#logout-button {
+    background: none;
+    border: none;
+    font-size: 3vh;
+    font-size: 100%;
+    font: inherit;
+    color: purple;
+    cursor: pointer;
+}
