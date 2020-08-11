@@ -14,9 +14,11 @@ console.log('connected using game conneciton')
 
 console.log(gameName, username)
 
+var old_game_state = {active: false, finished: false}
+
 // new game state
 socket.on('game_state', game_state => {
-    console.log(JSON.stringify(game_state))
+    // console.log(JSON.stringify(game_state))
     
     // update messages
     game_state.messages.forEach(message => {
@@ -28,7 +30,82 @@ socket.on('game_state', game_state => {
 
     // render the new game_state
     render(game_state)
+
+    // update old game state
+    old_game_state = JSON.parse(JSON.stringify(game_state))
 })
+
+// send messge
+messageForm.addEventListener('submit', e => {
+    e.preventDefault()
+    let message = messageInput.value
+    
+    // send message
+    if (message != "") {
+        socket.emit('chat-message', gameName, username, message)
+
+        // add message to chat
+        appendMessage(username.concat(": ", message))
+
+        // reset input bar
+        messageInput.value = ''
+    }
+})
+
+canvas.addEventListener('mousedown', function(e) {
+    processClick(e)
+})
+
+function processClick(event) {
+    const rect = canvas.getBoundingClientRect()
+    let x = event.clientX - rect.left
+    let y = event.clientY - rect.top
+
+    // check if in any card boxes
+    // need to loop backwards for overlapping cards
+    for (let i = card_boxes.length - 1; i >= 0; i--) {
+        if (x < card_boxes[i].x_max && x > card_boxes[i].x_min && y < card_boxes[i].y_max && y > card_boxes[i].y_min) {
+            // activate or unactivate the card
+            if (cards_activated.includes(i)) {  // need to unactivate
+                cards_activated.splice(cards_activated.indexOf(i), 1)
+            } else {  // need to activate
+                cards_activated.push(i)
+            }
+
+            break
+        }
+    }
+
+    // check if clicking play hand button
+    if (x < play_button.x_max && x > play_button.x_min && y < play_button.y_max && y > play_button.y_min) {
+        // send the message
+        let message = "!play "
+        cards_activated.forEach(index => {
+            message += old_game_state.player_cards[username][index].value.toString() + old_game_state.player_cards[username][index].color + " "
+        })
+        message = message.slice(0, -1)
+
+        socket.emit('chat-message', gameName, username, message)
+
+        // un activate all cards
+        cards_activated = []
+    }
+
+    // re-draw page
+    render(old_game_state)
+}
+
+// for clicking
+var card_boxes = []
+var cards_activated = []
+var play_button = { x_min: 0, x_max: 0, y_min: 0, y_max: 0 }  // this will be updated
+
+// add message to page
+function appendMessage(message) {
+    const messageElement = document.createElement('div')
+    messageElement.innerText = message
+    messageContainer.append(messageElement)
+}
 
 function render(game_state) {
     // wipe canvas
@@ -44,9 +121,12 @@ function render(game_state) {
         // draw the differenet aspects
         // draw current hand
         drawCurrentHand((width - ((width - 200) / 16 * 5)) / 2, height / 2 - 50, (width - 200) / 16 * 5, 100, game_state)
-        console.log(width - ((width - 200) / 16 * 5) / 2)
+
         // draw cards
         drawCards(100, height - 100, width - 200, 100, game_state)
+
+        // draw play button
+        drawPlayButton(width - 100, height - 150, 50, 20)
 
         // draw opponents
         drawOpponents(0, 0, width, height, game_state)
@@ -85,20 +165,37 @@ function drawCards(x_offset, y_offset, width, height, game_state) {
         card_gap = (width - card_width) / (num_cards - 1)
     }
 
+    // reset card boxes
+    card_boxes = []
+
     for (let i = 0; i < num_cards; i++) {
-        drawCard(x_offset + card_gap * i, y_offset, card_width, card_height, player_cards[i])
+        // draw the card
+        // bump it up if active
+        let card_y_offset = 0
+        if (cards_activated.includes(i)) {  
+            card_y_offset = 20
+        }
+        drawCard(x_offset + card_gap * i, y_offset - card_y_offset, card_width, card_height, player_cards[i])
     }
 
     // draw circle if up to play
     if (game_state.to_play == username) {
         ctx.fillStyle = "red"
         ctx.beginPath()
-        ctx.arc(x_offset + width / 2, y_offset - 20, 10, 0, 2 * Math.PI)
+        ctx.arc(x_offset + width / 2, y_offset - 50, 10, 0, 2 * Math.PI)
         ctx.fill()
     }
 }
 
 function drawCard(x, y, width, height, card) {
+    // add to card boxes
+    card_boxes.push({
+        x_min: x,
+        x_max: x + width,
+        y_min: y,
+        y_max: y + height
+    })
+
     const font_height = width
     
     // x y is top left
@@ -134,6 +231,29 @@ function drawCard(x, y, width, height, card) {
     ctx.strokeText(text, x + (width - text_measured.width)/ 2, y + (height + font_height) / 2)
     
     ctx.fillText(card.value.toString(), x + (width - ctx.measureText(card.value.toString()))/ 2, y)
+}
+
+function drawPlayButton(x_offset, y_offset, width, height) {
+    // update button box
+    play_button = {
+        x_min: x_offset,
+        x_max: x_offset + width,
+        y_min: y_offset,
+        y_max: y_offset + height
+    }
+
+    // draw the button
+    // outline
+    ctx.fillStyle = "black"
+    ctx.beginPath()
+    ctx.rect(x_offset, y_offset, width, height)
+    ctx.stroke()
+
+    // draw text
+    let font_size = Math.floor(height * .7)
+    ctx.font = font_size.toString() + "px Arial"
+    let text_width = ctx.measureText("Play").width
+    ctx.fillText("Play", x_offset + width / 2 - text_width / 2, y_offset + height / 2 + font_size / 2)
 }
 
 function drawOpponents(x_offset, y_offset, width, height, game_state) {
@@ -261,28 +381,3 @@ function drawRightOpponent(width, height, opponent_username, num_cards, is_playi
         ctx.fill()
     }
 }
-
-// add message to page
-function appendMessage(message) {
-    const messageElement = document.createElement('div')
-    messageElement.innerText = message
-    messageContainer.append(messageElement)
-}
-
-// send messge
-messageForm.addEventListener('submit', e => {
-    e.preventDefault()
-    let message = messageInput.value
-    
-    // send message
-    if (message != "") {
-        socket.emit('chat-message', gameName, username, message)
-
-        // add message to chat
-        appendMessage(username.concat(": ", message))
-
-        // reset input bar
-        messageInput.value = ''
-    }
-})
-

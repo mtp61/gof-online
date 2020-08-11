@@ -323,10 +323,12 @@ class Game {
                                         this.game_state.finished = true
 
                                         this.serverMessage(username.concat(' wins the game'))
+
+                                        break
                                     }
 
                                     // next player is up
-                                    this.nextPlayer()                                    
+                                    this.nextPlayer()                                
 
                                     break
 
@@ -447,7 +449,7 @@ class Game {
         } else {
             this.game_state.to_play = this.game_state.players[0]
         }
-        
+
         // message player
         this.personalMessage(this.game_state.to_play, "It's your turn to play")
     }
