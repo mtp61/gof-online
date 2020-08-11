@@ -1,3 +1,10 @@
+html, body {
+    overflow: hidden;
+    overscroll-behavior: none;
+    height: 100%;
+    width: 100%;
+}
+
 a {
     text-decoration: none;
 }
@@ -15,7 +22,11 @@ ul {
 li {
     margin: 0 2vw;
     font-size: 3vh;
-    color: purple;
+    color: white;
+}
+
+li a {
+    color: white;
 }
 
 #login {
@@ -28,6 +39,45 @@ li {
     font-size: 3vh;
     font-size: 100%;
     font: inherit;
-    color: purple;
+    color: white;
     cursor: pointer;
+}
+
+#game-canvas {
+    display: block;
+    float: left;
+    width: 70%;
+    height: 80%;
+}
+
+#chat-container {
+    display: block;
+    float: right;
+    width: 30%;
+    height: 100%;
+    position: relative;
+}
+
+#message-container {
+    overflow-y: scroll;
+    height: 80%;
+}
+
+#message-container div {
+    background-color: #CCC;
+    padding: 5px;
+}
+
+#message-container div:nth-child(2n) {
+    background-color: #FFF;
+}
+
+#send-container {
+    background-color: white;
+    width: 100%;
+    display: flex;
+}
+
+#message-input {
+    flex-grow: 1;
 }

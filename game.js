@@ -194,32 +194,7 @@ class Game {
                                 this.game_state.player_cards[username] = this.deck.slice(16 * player_num, 16 * (player_num + 1))
 
                                 // sort the cards
-                                this.game_state.player_cards[username].sort((card1, card2) => {
-                                    switch (Math.sign(card1.value - card2.value)) {
-                                        case 1:
-                                            return 1
-
-                                        case -1:
-                                            return -1
-
-                                        case 0:
-                                            if (card1.color == card2.color) {
-                                                return 0
-                                            } else if (card1.color == 'm') {
-                                                return 1
-                                            } else if (card2.color == 'm') {
-                                                return -1
-                                            } else if (card1.color == 'r') {
-                                                return 1
-                                            } else if (card2.color == 'r') {
-                                                return -1
-                                            } else if (card1.color == 'y') {
-                                                return 1
-                                            } else {
-                                                return -1
-                                            }
-                                    }
-                                })
+                                this.game_state.player_cards[username] = this.sortHand(this.game_state.player_cards[username])
 
                                 player_num++
                             })
@@ -301,7 +276,14 @@ class Game {
                                     if (hand.length == 0) {  // if the user passed
                                         this.serverMessage(username.concat(' passed'))
                                     } else {
-                                        this.serverMessage(username.concat(' played ', JSON.stringify(hand)))
+                                        // sort hand
+                                        hand = this.sortHand(hand)
+
+                                        let hand_string = ""
+                                        hand.forEach(card => {
+                                            hand_string += card.value.toString() + card.color + ' '
+                                        })
+                                        this.serverMessage(username.concat(' played ', hand_string))
                                     }
                                     
                                     // update current hand
@@ -309,7 +291,15 @@ class Game {
 
                                     // remove cards from player's hand
                                     hand.forEach(card => {
-                                        let card_index = this.game_state.player_cards[username].indexOf(card)
+                                        let card_index
+                                        for (let i = 0; i < this.game_state.player_cards[username].length; i++) {
+                                            if (this.game_state.player_cards[username][i].value == card.value && 
+                                                this.game_state.player_cards[username].color == this.game_state.player_cards[username].color) {
+                                                card_index = i
+                                                break
+                                            }
+                                        }
+
                                         this.game_state.player_cards[username].splice(card_index, 1)
                                     })
         
@@ -322,6 +312,8 @@ class Game {
                                             
                                             // current hand goes to play anything
                                             this.game_state.current_hand = []
+
+                                            this.serverMessage("All other players passed, board cleared")
                                         }
                                     }
 
@@ -334,9 +326,7 @@ class Game {
                                     }
 
                                     // next player is up
-                                    this.nextPlayer()
-
-                                    
+                                    this.nextPlayer()                                    
 
                                     break
 
@@ -385,12 +375,14 @@ class Game {
                 })
             }
 
-            // remove other players cards
-            this.game_state.players.forEach(username => {            
-                if (username != this.player_sockets[socket_id].username) {  // not the socket user
-                    delete player_game_state.player_cards[username]
-                }
-            })
+            if (this.game_state.active) {
+                // remove other players cards
+                this.game_state.players.forEach(username => {            
+                    if (username != this.player_sockets[socket_id].username) {  // not the socket user
+                        delete player_game_state.player_cards[username]
+                    }
+                })
+            }
 
             this.player_sockets[socket_id].socket.emit('game_state', player_game_state)
         })
@@ -412,6 +404,35 @@ class Game {
         this.personal_messages[username].push({username: "Server", message: message})
     }
 
+    sortHand(hand) {
+        return hand.sort((card1, card2) => {
+            switch (Math.sign(card1.value - card2.value)) {
+                case 1:
+                    return 1
+
+                case -1:
+                    return -1
+
+                case 0:
+                    if (card1.color == card2.color) {
+                        return 0
+                    } else if (card1.color == 'm') {
+                        return 1
+                    } else if (card2.color == 'm') {
+                        return -1
+                    } else if (card1.color == 'r') {
+                        return 1
+                    } else if (card2.color == 'r') {
+                        return -1
+                    } else if (card1.color == 'y') {
+                        return 1
+                    } else {
+                        return -1
+                    }
+            }
+        })
+    }
+
     nextPlayer() {  // sets up the next player in the rotation as to_play
         let current_index = this.game_state.players.indexOf(this.game_state.to_play)
 
@@ -423,8 +444,12 @@ class Game {
 
         if (current_index < this.game_state.players.length) {
             this.game_state.to_play = this.game_state.players[current_index]
+        } else {
+            this.game_state.to_play = this.game_state.players[0]
         }
-        this.game_state.to_play = this.game_state.players[0]
+        
+        // message player
+        this.personalMessage(this.game_state.to_play, "It's your turn to play")
     }
 
     canPlayHand(hand_new, hand_old) {  // returns 1 if the new hand can beat the old hand, 0 if the hand is not better, -1 if the hand is not legal
@@ -554,9 +579,7 @@ class Game {
 
                 // check straight, scores from 
                 let is_straight = true
-                hand.sort((card1, card2) => {  // sort hand
-                    return Math.sign(card1.value - card2.value)
-                })
+                hand = this.sortHand(hand)
 
                 let starting_value = hand[0].value
                 if (hand[4].value != 11) {  // no pheonix/drag in straight
