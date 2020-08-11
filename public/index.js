@@ -17,6 +17,7 @@ socket.on('game_created', gameName => {
     gameContainer.append(gameElement)
 })
 
-socket.on('game_removed', game => {
-    
+socket.on('game_removed', gameName => {
+    const gameElement = document.getElementById(gameName)
+    gameContainer.removeChild(gameElement)
 })

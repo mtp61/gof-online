@@ -4,6 +4,10 @@ class GameManager {
     constructor(tickrate) {
         this.games = {}
         this.index_sockets = {}
+
+        this.CONSTANTS = {
+            MIN_TIME: 5 // minimum time for a game to stay active with no users in seconds
+        }
         
         // update tickrate times per second
         setInterval(this.tick.bind(this), 1000 / tickrate);
@@ -15,7 +19,22 @@ class GameManager {
             this.games[gameName].update()
         })
 
-        // console.log('tick')
+        // check to see if games should be deleted
+        Object.keys(this.games).forEach(gameName => {
+            if (Object.keys(this.games[gameName].observer_sockets).length == 0 && 
+                + Object.keys(this.games[gameName].player_sockets).length == 0 &&
+                + (Date.now() - this.games[gameName].creation_time) / 1000 > this.CONSTANTS.MIN_TIME) {
+                
+                // delete game
+                delete this.games[gameName]
+                
+                Object.keys(this.index_sockets).forEach(socket_id => {
+                    this.index_sockets[socket_id].emit('game_removed', gameName)
+                })
+
+                console.log("game deleted: " + gameName + ", all users disconnected")
+            }
+        })
     }
 
     newGame(gameName) {
@@ -53,7 +72,7 @@ class GameManager {
     gameConnection(socket, gameName, username) {
         console.log('game', gameName, 'socket connect:', socket.id, username)
         this.games[gameName].newConnection(socket, username)
-        this.games[gameName].message_queue.push({ 'username': 'Server', 'message': username.concat(" connected")})
+        this.games[gameName].message_queue.push({ username: 'Server', message: username.concat(" connected")})
     }
 
     removeConnection(socket) {
@@ -68,18 +87,22 @@ class GameManager {
         for (let g of Object.keys(this.games)) {
             if (this.games[g].observer_sockets[socket.id] != null) {
                 console.log('game socket disconnect:', socket.id, this.games[g].observer_sockets[socket.id]['username'])
-                this.games[g].message_queue.push({ 'username': "Server", 'message': this.games[g].observer_sockets[socket.id]['username'].concat(" disconnected") })
+                this.games[g].message_queue.push({ username: "Server", message: this.games[g].observer_sockets[socket.id]['username'].concat(" disconnected") })
                 delete this.games[g].observer_sockets[socket.id]
                 return
             }
             if (this.games[g].observer_sockets[socket.id] != null) {
                 console.log('game socket disconnect:', socket.id, this.games[g].player_sockets[socket.id]['username'])
                 // sendmessage
-                this.games[g].message_queue.push({ 'username': "Server", 'message': this.games[g].game_sockets[socket.id]['username'].concat(" disconnected") })
+                this.games[g].message_queue.push({ username: "Server", message: this.games[g].game_sockets[socket.id]['username'].concat(" disconnected") })
                 delete this.games[g].game_sockets[socket.id]
                 return
             }
         }
+    }
+
+    onMessage(gameName, username, message) {
+        this.games[gameName].message_queue.push({username: username, message: message})
     }
 }
 

@@ -92,7 +92,7 @@ if (process.env.NODE_ENV !== 'production') {
   })
   
   function onMessage(gameName, username, message) {
-    gameManager.games[gameName].message_queue.push({'username': username, 'message': message})
+    gameManager.onMessage(gameName, username, message)
   }
   
   function onConnectIndex() {
