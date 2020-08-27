@@ -21,7 +21,7 @@ class GameManager {
 
         // check to see if games should be deleted
         Object.keys(this.games).forEach(gameName => {
-            if (Object.keys(this.games[gameName].observer_sockets).length == 0 && 
+            if (Object.keys(this.games[gameName].observer_sockets).length == 0 &&
                 + Object.keys(this.games[gameName].player_sockets).length == 0 &&
                 + (Date.now() - this.games[gameName].creation_time) / 1000 > this.CONSTANTS.MIN_TIME) {
                 
@@ -85,24 +85,18 @@ class GameManager {
 
         // check if in game connections
         for (let g of Object.keys(this.games)) {
-            if (this.games[g].observer_sockets[socket.id] != null) {
-                console.log('game socket disconnect:', socket.id, this.games[g].observer_sockets[socket.id]['username'])
-                this.games[g].message_queue.push({ username: "Server", message: this.games[g].observer_sockets[socket.id]['username'].concat(" disconnected") })
-                delete this.games[g].observer_sockets[socket.id]
-                return
-            }
-            if (this.games[g].observer_sockets[socket.id] != null) {
-                console.log('game socket disconnect:', socket.id, this.games[g].player_sockets[socket.id]['username'])
-                // sendmessage
-                this.games[g].message_queue.push({ username: "Server", message: this.games[g].game_sockets[socket.id]['username'].concat(" disconnected") })
-                delete this.games[g].game_sockets[socket.id]
+            if (this.games[g].observer_sockets[socket.id] != null || this.games[g].player_sockets[socket.id] != null) {                
+                this.games[g].socketDisconnect(socket.id)
+                
                 return
             }
         }
     }
 
     onMessage(gameName, username, message) {
-        this.games[gameName].message_queue.push({username: username, message: message})
+        if (Object.keys(this.games).includes(gameName)) {
+            this.games[gameName].message_queue.push({username: username, message: message})
+        }
     }
 }
 

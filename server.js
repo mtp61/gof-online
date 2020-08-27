@@ -79,7 +79,7 @@ if (process.env.NODE_ENV !== 'production') {
     res.redirect('/')
   })
   
-  server.listen(3000)
+  server.listen(3331)
   
   // socket io shit
   io.on('connection', socket => {
@@ -106,7 +106,6 @@ if (process.env.NODE_ENV !== 'production') {
   function onDisconnect () {
     gameManager.removeConnection(this)
   }
-  
   
   // game shit
   // create a new game

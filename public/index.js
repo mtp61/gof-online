@@ -1,4 +1,4 @@
-const socket = io('http://localhost:3000')
+const socket = io('localhost:3331')  // powergrid.life
 
 const gameContainer = document.getElementById('game-container')
 

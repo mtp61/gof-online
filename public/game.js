@@ -1,4 +1,4 @@
-const socket = io('http://localhost:3000')
+const socket = io('localhost:3331')  // powergrid.life
 
 const messageContainer = document.getElementById('message-container')
 const messageForm = document.getElementById('send-container')
@@ -33,6 +33,9 @@ socket.on('game_state', game_state => {
 
     // update old game state
     old_game_state = JSON.parse(JSON.stringify(game_state))
+    
+    // print game state
+    console.log(JSON.stringify(game_state))
 })
 
 // send messge
@@ -77,11 +80,14 @@ function processClick(event) {
     }
 
     // check if clicking play hand button
-    if (x < play_button.x_max && x > play_button.x_min && y < play_button.y_max && y > play_button.y_min) {
+    if (x < play_button.x_max && x > play_button.x_min && y < play_button.y_max && y > play_button.y_min) {        
         // send the message
         let message = "!play "
+        let max_index = old_game_state.player_cards[username].length - 1
         cards_activated.forEach(index => {
-            message += old_game_state.player_cards[username][index].value.toString() + old_game_state.player_cards[username][index].color + " "
+            if (index <= max_index) {  // ignore cards that were selected before that had an index too high
+                message += old_game_state.player_cards[username][index].value.toString() + old_game_state.player_cards[username][index].color + " "
+            }
         })
         message = message.slice(0, -1)
 
@@ -105,6 +111,7 @@ function appendMessage(message) {
     const messageElement = document.createElement('div')
     messageElement.innerText = message
     messageContainer.append(messageElement)
+    messageContainer.scrollTop = messageContainer.scrollHeight
 }
 
 function render(game_state) {
@@ -196,6 +203,11 @@ function drawCard(x, y, width, height, card) {
         y_max: y + height
     })
 
+    // fill square
+    ctx.fillStyle = "white"
+    ctx.fillRect(x, y, width, height)
+
+    // set font size
     const font_height = width
     
     // x y is top left
