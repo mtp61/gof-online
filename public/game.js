@@ -60,45 +60,47 @@ canvas.addEventListener('mousedown', function(e) {
 })
 
 function processClick(event) {
-    const rect = canvas.getBoundingClientRect()
-    let x = event.clientX - rect.left
-    let y = event.clientY - rect.top
+    if (old_game_state.players.includes(username)) {  // check not observer
+        const rect = canvas.getBoundingClientRect()
+        let x = event.clientX - rect.left
+        let y = event.clientY - rect.top
+        
+        // check if in any card boxes
+        // need to loop backwards for overlapping cards
+        for (let i = card_boxes.length - 1; i >= 0; i--) {
+            if (x < card_boxes[i].x_max && x > card_boxes[i].x_min && y < card_boxes[i].y_max && y > card_boxes[i].y_min) {
+                // activate or unactivate the card
+                if (cards_activated.includes(i)) {  // need to unactivate
+                    cards_activated.splice(cards_activated.indexOf(i), 1)
+                } else {  // need to activate
+                    cards_activated.push(i)
+                }
 
-    // check if in any card boxes
-    // need to loop backwards for overlapping cards
-    for (let i = card_boxes.length - 1; i >= 0; i--) {
-        if (x < card_boxes[i].x_max && x > card_boxes[i].x_min && y < card_boxes[i].y_max && y > card_boxes[i].y_min) {
-            // activate or unactivate the card
-            if (cards_activated.includes(i)) {  // need to unactivate
-                cards_activated.splice(cards_activated.indexOf(i), 1)
-            } else {  // need to activate
-                cards_activated.push(i)
+                break
             }
-
-            break
         }
+
+        // check if clicking play hand button
+        if (x < play_button.x_max && x > play_button.x_min && y < play_button.y_max && y > play_button.y_min) {        
+            // send the message
+            let message = "!play "
+            let max_index = old_game_state.player_cards[username].length - 1
+            cards_activated.forEach(index => {
+                if (index <= max_index) {  // ignore cards that were selected before that had an index too high
+                    message += old_game_state.player_cards[username][index].value.toString() + old_game_state.player_cards[username][index].color + " "
+                }
+            })
+            message = message.slice(0, -1)
+
+            socket.emit('chat-message', gameName, username, message)
+
+            // un activate all cards
+            cards_activated = []
+        }
+
+        // re-draw page
+        render(old_game_state)
     }
-
-    // check if clicking play hand button
-    if (x < play_button.x_max && x > play_button.x_min && y < play_button.y_max && y > play_button.y_min) {        
-        // send the message
-        let message = "!play "
-        let max_index = old_game_state.player_cards[username].length - 1
-        cards_activated.forEach(index => {
-            if (index <= max_index) {  // ignore cards that were selected before that had an index too high
-                message += old_game_state.player_cards[username][index].value.toString() + old_game_state.player_cards[username][index].color + " "
-            }
-        })
-        message = message.slice(0, -1)
-
-        socket.emit('chat-message', gameName, username, message)
-
-        // un activate all cards
-        cards_activated = []
-    }
-
-    // re-draw page
-    render(old_game_state)
 }
 
 // for clicking
@@ -129,11 +131,16 @@ function render(game_state) {
         // draw current hand
         drawCurrentHand((width - ((width - 200) / 16 * 5)) / 2, height / 2 - 50, (width - 200) / 16 * 5, 100, game_state)
 
-        // draw cards
-        drawCards(100, height - 100, width - 200, 100, game_state)
+        // if not observer
+        if (game_state.players.includes(username)) {  
+            // draw cards
+            drawCards(100, height - 100, width - 200, 100, game_state)
 
-        // draw play button
-        drawPlayButton(width - 100, height - 150, 50, 20)
+            // draw play button
+            drawPlayButton(width - 100, height - 150, 50, 20)
+        }
+
+        
 
         // draw opponents
         drawOpponents(0, 0, width, height, game_state)
@@ -272,70 +279,93 @@ function drawOpponents(x_offset, y_offset, width, height, game_state) {
     // draw direction
     // todo
 
-    let player_index = game_state.players.indexOf(username)
+    if (game_state.players.includes(username)) {  // if in game
+        let player_index = game_state.players.indexOf(username)
 
-    let opponent_username, left_opponent_username, right_opponent_username, top_opponent_username
-    switch (game_state.players.length) {
-        case 2:
-            // draw top
-            if (player_index == 0) {
-                opponent_username = game_state.players[1]
-            } else {
-                opponent_username = game_state.players[0]
-            }
-            
-            drawTopOpponent(width, height, opponent_username, game_state.num_cards[opponent_username], opponent_username == game_state.to_play)
-            
-            break
-        case 3:
-            // draw left and right
-            switch (player_index) {
-                case 0:
-                    left_opponent_username = game_state.players[1]
-                    right_opponent_username = game_state.players[2]
-                    break
-                case 1:
-                    left_opponent_username = game_state.players[2]
-                    right_opponent_username = game_state.players[0]
-                    break
-                case 2:
-                    left_opponent_username = game_state.players[0]
-                    right_opponent_username = game_state.players[1]
-                    break
-            }
-            
-            drawLeftOpponent(width, height, left_opponent_username, game_state.num_cards[left_opponent_username], left_opponent_username == game_state.to_play)
-            drawRightOpponent(width, height, right_opponent_username, game_state.num_cards[right_opponent_username], right_opponent_username == game_state.to_play)
+        let opponent_username, left_opponent_username, right_opponent_username, top_opponent_username
+        switch (game_state.players.length) {
+            case 2:
+                // draw top
+                if (player_index == 0) {
+                    opponent_username = game_state.players[1]
+                } else {
+                    opponent_username = game_state.players[0]
+                }
+                
+                drawTopOpponent(width, height, opponent_username, game_state.num_cards[opponent_username], opponent_username == game_state.to_play)
+                
+                break
+            case 3:
+                // draw left and right
+                switch (player_index) {
+                    case 0:
+                        left_opponent_username = game_state.players[1]
+                        right_opponent_username = game_state.players[2]
+                        break
+                    case 1:
+                        left_opponent_username = game_state.players[2]
+                        right_opponent_username = game_state.players[0]
+                        break
+                    case 2:
+                        left_opponent_username = game_state.players[0]
+                        right_opponent_username = game_state.players[1]
+                        break
+                }
+                
+                drawLeftOpponent(width, height, left_opponent_username, game_state.num_cards[left_opponent_username], left_opponent_username == game_state.to_play)
+                drawRightOpponent(width, height, right_opponent_username, game_state.num_cards[right_opponent_username], right_opponent_username == game_state.to_play)
 
-            break
-        case 4:
-            // draw all three
-            switch (player_index) {
-                case 0:
-                    left_opponent_username = game_state.players[1]
-                    top_opponent_username = game_state.players[2]
-                    right_opponent_username = game_state.players[3]
-                    break
-                case 1:
-                    left_opponent_username = game_state.players[2]
-                    top_opponent_username = game_state.players[3]
-                    right_opponent_username = game_state.players[0]
-                    break
-                case 2:
-                    left_opponent_username = game_state.players[3]
-                    top_opponent_username = game_state.players[0]
-                    right_opponent_username = game_state.players[1]
-                    break
-                case 3:
-                    left_opponent_username = game_state.players[0]
-                    top_opponent_username = game_state.players[1]
-                    right_opponent_username = game_state.players[2]
-                    break
-            }
-            
-            drawLeftOpponent(width, height, left_opponent_username, game_state.num_cards[left_opponent_username], left_opponent_username == game_state.to_play)
-            drawTopOpponent(width, height, top_opponent_username, game_state.num_cards[top_opponent_username], top_opponent_username == game_state.to_play)
-            drawRightOpponent(width, height, right_opponent_username, game_state.num_cards[right_opponent_username], right_opponent_username == game_state.to_play)
+                break
+            case 4:
+                // draw all three
+                switch (player_index) {
+                    case 0:
+                        left_opponent_username = game_state.players[1]
+                        top_opponent_username = game_state.players[2]
+                        right_opponent_username = game_state.players[3]
+                        break
+                    case 1:
+                        left_opponent_username = game_state.players[2]
+                        top_opponent_username = game_state.players[3]
+                        right_opponent_username = game_state.players[0]
+                        break
+                    case 2:
+                        left_opponent_username = game_state.players[3]
+                        top_opponent_username = game_state.players[0]
+                        right_opponent_username = game_state.players[1]
+                        break
+                    case 3:
+                        left_opponent_username = game_state.players[0]
+                        top_opponent_username = game_state.players[1]
+                        right_opponent_username = game_state.players[2]
+                        break
+                }
+                
+                drawLeftOpponent(width, height, left_opponent_username, game_state.num_cards[left_opponent_username], left_opponent_username == game_state.to_play)
+                drawTopOpponent(width, height, top_opponent_username, game_state.num_cards[top_opponent_username], top_opponent_username == game_state.to_play)
+                drawRightOpponent(width, height, right_opponent_username, game_state.num_cards[right_opponent_username], right_opponent_username == game_state.to_play)
+        }
+    } else {  // observer
+        switch (game_state.players.length) {
+            case 1:
+                drawBottomOpponent(width, height, game_state.players[0], game_state.num_cards[game_state.players[0]], game_state.players[0] == game_state.to_play)
+                break;
+            case 2:
+                drawLeftOpponent(width, height, game_state.players[0], game_state.num_cards[game_state.players[0]], game_state.players[0] == game_state.to_play)
+                drawRightOpponent(width, height, game_state.players[1], game_state.num_cards[game_state.players[1]], game_state.players[1] == game_state.to_play)
+                break;
+            case 3:
+                drawLeftOpponent(width, height, game_state.players[0], game_state.num_cards[game_state.players[0]], game_state.players[0] == game_state.to_play)
+                drawTopOpponent(width, height, game_state.players[1], game_state.num_cards[game_state.players[1]], game_state.players[1] == game_state.to_play)
+                drawRightOpponent(width, height, game_state.players[2], game_state.num_cards[game_state.players[2]], game_state.players[2] == game_state.to_play)
+                break;
+            case 4:
+                drawLeftOpponent(width, height, game_state.players[0], game_state.num_cards[game_state.players[0]], game_state.players[0] == game_state.to_play)
+                drawTopOpponent(width, height, game_state.players[1], game_state.num_cards[game_state.players[1]], game_state.players[1] == game_state.to_play)
+                drawRightOpponent(width, height, game_state.players[2], game_state.num_cards[game_state.players[2]], game_state.players[2] == game_state.to_play)
+                drawBottomOpponent(width, height, game_state.players[3], game_state.num_cards[game_state.players[3]], game_state.players[3] == game_state.to_play)
+                break;
+        }
     }
 
 }
@@ -390,6 +420,24 @@ function drawRightOpponent(width, height, opponent_username, num_cards, is_playi
         ctx.fillStyle = "red"
         ctx.beginPath()
         ctx.arc(width - ctx.measureText(opponent_str).width / 2 - 10, (height - 100) / 2 + 20, 10, 0, 2 * Math.PI)
+        ctx.fill()
+    }
+}
+
+function drawBottomOpponent(width, height, opponent_username, num_cards, is_playing) {
+    // draw name and num cards
+    let opponent_str = opponent_username.concat(": ", num_cards)
+    
+    ctx.fillStyle = "black"
+    ctx.font = "20px Arial"
+
+    ctx.fillText(opponent_str, width / 2 - ctx.measureText(opponent_str).width / 2, height - 100)
+    
+    // draw circle if up to play
+    if (is_playing) {
+        ctx.fillStyle = "red"
+        ctx.beginPath()
+        ctx.arc(width / 2, height - 100 - 40, 10, 0, 2 * Math.PI)
         ctx.fill()
     }
 }
