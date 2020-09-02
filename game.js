@@ -317,21 +317,20 @@ class Game {
                         switch (this.canPlayHand(hand, this.game_state.current_hand)) {
                             case 1:  // can play hand
                                 // check if next player has 1 card left
-                                if (this.game_state.current_hand.length == 1 || hand.length == 1) {
-                                    const current_player_index = this.game_state.players.indexOf(username)
-                                    const next_player_index = (current_player_index + 1) % this.game_state.players.length
-                                    const next_player = this.game_state.players[next_player_index]
-                                    if (this.game_state.player_cards[next_player].length == 1) {  // only 1 card left
-                                        // make sure we played our highest single (or gang)
-                                        const highest_single = this.game_state.player_cards[username][this.game_state.player_cards[username].length - 1]
-                                        if ((hand[0].value != highest_single.value || hand[0].color != highest_single.color) && hand.length != 4) {
-                                            console.log(JSON.stringify(hand), JSON.stringify([highest_single]))
-                                            this.personalMessage(username, "Must play highest single")
-                                            break
-                                        }
+                                const current_player_index = this.game_state.players.indexOf(username)
+                                const next_player_index = (current_player_index + 1) % this.game_state.players.length
+                                const next_player = this.game_state.players[next_player_index]
+                                const np_nc = this.game_state.player_cards[next_player].length  // next player num cards
+                                
+                                if (np_nc == 1 && hand.length == 1) {  // in this case need to play highest single
+                                    const highest_single = this.game_state.player_cards[username][this.game_state.player_cards[username].length - 1]
+
+                                    if (this.cardToNum(hand[0]) != this.cardToNum(highest_single)) {
+                                        this.personalMessage(username, "Must play highest single")
+                                        break
                                     }
                                 }
-
+                            
                                 // message users
                                 if (hand.length == 0) {  // if the user passed
                                     this.serverMessage(username.concat(' passed'))
@@ -722,15 +721,14 @@ class Game {
                 }
 
                 // full house
-                if (hand[0].value == hand[1].value && hand[3].value == hand[4].value && 
-                    + (hand[2].value == hand[1].value || hand[2].value == hand[3].value)) {
-                    if (hand[1] == hand[2]) {  // three is first 3
+                if (hand[0].value == hand[1].value && hand[3].value == hand[4].value && (hand[2].value == hand[1].value || hand[2].value == hand[3].value)) {
+                    if (hand[1].value == hand[2].value) {  // three is first 3
                         score = 1000000 * hand[0].value + 100000 * hand[4].value + 3000000
-                        for (let i = 2; i >= 0; i++) {  // add colors for the 3
+                        for (let i = 2; i >= 0; i--) {  // add colors for the 3
                             score += ten_power * this.cardColorNum(hand[i])
                             ten_power /= 10
                         }
-                        for (let i = 4; i >= 3; i++) {  // for the 2
+                        for (let i = 4; i >= 3; i--) {  // for the 2
                             score += ten_power * this.cardColorNum(hand[i])
                             ten_power /= 10
                         }
